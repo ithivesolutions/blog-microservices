@@ -1,0 +1,75 @@
+Blog - Event Bus: {
+  shape: sequence_diagram
+
+  user: {shape: person}
+  eb: event-bus-4005
+  ps: post-service-4000
+  cs: comment-service-4001
+  qs: query-service-4002
+  ms: moderation-service-4003
+
+  user.z -> qs.z: Request-getposts()
+  user.z <- qs.z: Response-allPosts {
+    style.stroke-dash: 5
+  }
+
+  New Post: {
+    user.a -> ps.a: Request-addPost()
+    ps.a -> ps.a: createPost
+    ps.a."Updates the Posts-DB"
+
+    Event - PostCreated: {
+      ps.a -> eb.a: Event(type: "PostCreated")
+      eb.a -> ps.a: Event(type: "PostCreated")
+      ps.a."Does nothing | Just receives the events"
+      eb.a -> cs.a: Event(type: "PostCreated")
+      cs.a."Does nothing | Logic is only for 'CommentModerated'"
+      eb.a -> qs.a: Event(type: "PostCreated")
+      qs.a."Updates the Query-DB"
+      eb.a -> ms.a: Event(type: "PostCreated")
+      ms.a."Does nothing | Logic is only for 'CommentCreated'"
+    }
+  }
+
+  New Comment: {
+    user.b -> cs.b: Request-addComments
+    cs.b -> cs.b: createComment
+    cs.b."Updates Comments DB with status as 'pending'"
+
+    Event - CommentCreated: {
+      cs.b -> eb.b: Event(type: "CommentCreated")
+      eb.b -> ps.b: Event(type: "CommentCreated")
+      ps.b."Does nothing | Just receives the events"
+      eb.b -> cs.b: Event(type: "CommentCreated")
+      cs.b."Does nothing | Logic is only for 'CommentModerated'"
+      eb.b -> qs.b: Event(type: "CommentCreated")
+      qs.b."Updates the Query-DB"
+      eb.b -> ms.b: Event(type: "CommentCreated")
+      ms.b."Validate to 'reject' the comment status if the comment content includes 'orange' else 'approve'; and triggers an event 'CommentModerated"
+    }
+
+    Event - CommentModerated: {
+      ms.b -> eb.c: Event(type: "CommentModerated")
+      eb.c -> ps.c: Event(type: "CommentModerated")
+      ps.c."Does nothing | Just receives the events"
+      eb.c -> cs.c: Event(type: "CommentModerated")
+      cs.c."Updates the DB and triggers an event 'CommentUpdated"
+      eb.c -> qs.c: Event(type: "CommentModerated")
+      qs.c."Updates the Query-DB"
+      eb.c -> ms.c: Event(type: "CommentModerated")
+      ms.c."Does nothing | Logic is only for 'CommentCreated'"
+    }
+
+    Event - commentUpdated: {
+      cs.c -> eb.d: Event(type: "commentUpdated")
+      eb.d -> ps.d: Event(type: "commentUpdated")
+      ps.d."Does nothing | Just receives the events"
+      eb.d -> cs.d: Event(type: "commentUpdated")
+      cs.d."Does nothing | Logic is only for 'CommentModerated'"
+      eb.d -> qs.d: Event(type: "commentUpdated")
+      qs.d."Updates the Query-DB"
+      eb.d -> ms.d: Event(type: "commentUpdated")
+      ms.d."Does nothing | Logic is only for 'CommentCreated'"
+    }
+  }
+}
